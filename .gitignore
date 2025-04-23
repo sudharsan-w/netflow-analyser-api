@@ -1,0 +1,95 @@
+*.csv
+*.yml
+*.conf
+*.zip
+*.pyc
+*.env
+venv/
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
+
+# Installer logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# PyCharm / VS Code settings
+.idea/
+.vscode/
+
+# MyPy type check reports
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Pytest cache
+.pytest_cache/
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff
+instance/
+*.log
+
+# Scrapy stuff
+.scrapy/
+
+# Sphinx documentation
+docs/_build/
+
+# Pyre type checker
+.pyre/
+
+# Jupyter Notebook output
+*.ipynb_checkpoints
+
+# Temporary files
+*.swp
+*.swo
+*.swn
+*.bak
+
+# macOS files
+.DS_Store
+
+# Windows files
+Thumbs.db
