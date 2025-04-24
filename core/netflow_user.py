@@ -8,13 +8,8 @@ from utils import iterate_async
 NetflowFields = tuple(UserNetflow.model_fields.keys())
 NetflowFieldLiteral = Literal[NetflowFields]
 
-NETFLOWUSER_PIPELINE = lambda: [
-    {
-        "$set": {
-            "country_code": "$geo_location.iso_code"
-        }
-    }
-]
+NETFLOWUSER_PIPELINE = lambda: [{"$set": {"country_code": "$geo_location.iso_code"}}]
+
 
 async def get_netflow_user(
     skip: Optional[int] = None,
@@ -26,7 +21,7 @@ async def get_netflow_user(
     sort_by: Optional[NetflowFieldLiteral] = None,
     sort_order: SortOrder = "asc",
 ):
-    pipeline = []
+    pipeline = [*NETFLOWUSER_PIPELINE()]
 
     ##filters
     if filters:
@@ -42,9 +37,7 @@ async def get_netflow_user(
         date_to = (
             None if not date_to else date_to + timedelta(days=1) - timedelta(minutes=1)
         )
-        date_from = (
-            None if not date_from else date_from
-        )
+        date_from = None if not date_from else date_from
         if date_from and date_to:
             pipeline.insert(
                 0, {"$match": {"date_added": {"$gte": date_from, "$lte": date_to}}}
@@ -105,16 +98,29 @@ async def get_user_details(id: str):
         .get_collection(AppDB.NetFlows.NetflowUser, async_=True)
         .find_one({"usr_id": id}, {"_id": 0})
     )
-    pipeline = [{
-        "$set": {
-            "flow_duration": {
-                "$dateDiff": {
-                    "startDate": ""
-                }
-            }
-        }
-    }]
-    
+    pipeline = [{"$set": {"flow_duration": {"$dateDiff": {"startDate": ""}}}}]
+
     return user
 
-    
+
+async def get_country_keys():
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.NetflowUser, async_=True)
+        .aggregate(
+            [
+                # {"$group": {"_id": "", "keys": {"$addToSet": "$dst_port"}}},
+                {
+                    "$group": {
+                        "_id": "",
+                        "keys": {"$addToSet": "$geo_location.iso_code"},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    if len(keys) == 0:
+        return []
+    keys = list(map(str, keys[0]["keys"]))
+    return sorted(list(filter(lambda k: k, keys)))

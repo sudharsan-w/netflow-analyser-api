@@ -45,10 +45,6 @@ async def get_netflow(
 
     ##filters
     if filters:
-        if "src_port" in filters:
-            filters["src_port"] = [int(i) for i in filters["src_port"]]
-        if "dst_port" in filters:
-            filters["dst_port"] = [int(i) for i in filters["dst_port"]]
         if "protocol" in filters:
             filters["protocol"] = [
                 proto.l4_proto_reverse(i) for i in filters["protocol"]

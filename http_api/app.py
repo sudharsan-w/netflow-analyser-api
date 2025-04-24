@@ -174,6 +174,16 @@ async def _country_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: 
         timezone_updater(await netflow.get_dstcountries_keys(), tz=timezone(tz.value))
     )
 
+@router.get(
+    "/v1/get/user_country/keys",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _country_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: ignore
+    return json_serializer(
+        timezone_updater(await netflow_user.get_country_keys(), tz=timezone(tz.value))
+    )
+
 
 http_api.include_router(auth_router)
 http_api.include_router(router)
