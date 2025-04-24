@@ -22,7 +22,7 @@ class NetflowRecord(BaseModel):
     last_datetime: datetime
     flow_duration: int
     collected_recv_datetime: datetime
-    record_num: int
+    record_num: Optional[int]
     flow_size: int
     in_byte: int
     in_packet: int
@@ -46,6 +46,8 @@ class NetflowRecord(BaseModel):
         None  # mapped after the malicious nature of the dest port
     )
     dst_malicious_source: Optional[dict] = None
+    src_country_code: Optional[str] = None
+    dst_country_code: Optional[str] = None
 
 
 class NetflowRawRecord(BaseModel):
@@ -70,6 +72,7 @@ class UserNetflow(BaseModel):
     geo_location: Optional[dict] = None
     malicous_crefs: Optional[list] = None  # flow refs
     schema_version: int = Field(default=1)
+    country_code: Optional[str] = None
 
 
 # =================================
@@ -134,3 +137,5 @@ class User(BaseModel):
     malicous_crefs: Optional[list] = None  # flow refs
     schema_version: int = Field(default=1)
     excluded: Optional[ExcludedInfo] = None
+
+# ====================================================

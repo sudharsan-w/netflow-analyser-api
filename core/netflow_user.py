@@ -8,6 +8,13 @@ from utils import iterate_async
 NetflowFields = tuple(UserNetflow.model_fields.keys())
 NetflowFieldLiteral = Literal[NetflowFields]
 
+NETFLOWUSER_PIPELINE = lambda: [
+    {
+        "$set": {
+            "country_code": "$geo_location.iso_code"
+        }
+    }
+]
 
 async def get_netflow_user(
     skip: Optional[int] = None,

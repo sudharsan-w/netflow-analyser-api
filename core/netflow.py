@@ -3,7 +3,7 @@ from typing import Optional, Dict, Literal
 from database import AppDB
 from models import NetflowRecord, SortOrder
 
-from utils import iterate_async
+from utils import iterate_async, proto
 
 NetflowFields = tuple(NetflowRecord.model_fields.keys())
 NetflowFieldLiteral = Literal[NetflowFields]
@@ -17,11 +17,13 @@ NETFLOW_PIPELINE = lambda: [
             "src_known": "$source_ip.known",
             "src_malicious": "$source_ip.malicious",
             "src_malicious_source": "$source_ip.malicious_source",
+            "src_country_code": "$source_ip.location.iso_code",
             "dst_addr": "$destination_ip.addr",
             "dst_port": "$destination_ip.port",
             "dst_known": "$destination_ip.known",
-            "src_malicious": "$destination_ip.malicious",
-            "src_malicious_source": "$destination_ip.malicious_source",
+            "dst_malicious": "$destination_ip.malicious",
+            "dst_malicious_source": "$destination_ip.malicious_source",
+            "dst_country_code": "$destination_ip.location.iso_code",
         }
     }
 ]
@@ -48,7 +50,9 @@ async def get_netflow(
         if "dst_port" in filters:
             filters["dst_port"] = [int(i) for i in filters["dst_port"]]
         if "protocol" in filters:
-            filters["protocol"] = [int(i) for i in filters["protocol"]]
+            filters["protocol"] = [
+                proto.l4_proto_reverse(i) for i in filters["protocol"]
+            ]
         for k, v in filters.items():
             pipeline.append({"$match": {k: {"$in": v}}})
 
@@ -164,7 +168,13 @@ async def get_netflow(
         has_prev_pages = False
     data_slice = data[0 : min(limit, len(data))]
     data_slice = list(map(lambda a: NetflowRecord(**a), data_slice))
-
+    data_slice = list(map(vars, data_slice))
+    for d in data_slice:
+        d["protocol"] = (
+            proto.l4_proto(d["protocol"])
+            if proto.l4_proto(d["protocol"])
+            else str(d["protocol"])
+        )
     res = {
         "page_no": curr_page,
         "skip": skip,
@@ -186,8 +196,13 @@ async def get_proro_keys():
     keys = await iterate_async(keys)
     if len(keys) == 0:
         return []
-    keys = list(map(str, keys[0]["keys"]))
-    return keys
+    keys = list(
+        map(
+            lambda p: proto.l4_proto(p) if proto.l4_proto(p) else f"{p}",
+            keys[0]["keys"],
+        )
+    )
+    return sorted(keys)
 
 
 async def get_srcports_keys():
@@ -205,7 +220,7 @@ async def get_srcports_keys():
     if len(keys) == 0:
         return []
     keys = list(map(str, keys[0]["keys"]))
-    return list(filter(lambda k: len(k) <= 5, keys))
+    return sorted(list(filter(lambda k: len(k) <= 5, keys)))
 
 
 async def get_dstports_keys():
@@ -223,4 +238,50 @@ async def get_dstports_keys():
     if len(keys) == 0:
         return []
     keys = list(map(str, keys[0]["keys"]))
-    return list(filter(lambda k: len(k) <= 5, keys))
+    return sorted(list(filter(lambda k: len(k) <= 5, keys)))
+
+
+async def get_srccountries_keys():
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(
+            [
+                # {"$group": {"_id": "", "keys": {"$addToSet": "$dst_port"}}},
+                {
+                    "$group": {
+                        "_id": "",
+                        "keys": {"$addToSet": "$source_ip.location.iso_code"},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    if len(keys) == 0:
+        return []
+    keys = list(map(str, keys[0]["keys"]))
+    return sorted(list(filter(lambda k: k, keys)))
+
+
+async def get_dstcountries_keys():
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(
+            [
+                # {"$group": {"_id": "", "keys": {"$addToSet": "$dst_port"}}},
+                {
+                    "$group": {
+                        "_id": "",
+                        "keys": {"$addToSet": "$destination_ip.location.iso_code"},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    if len(keys) == 0:
+        return []
+    keys = list(map(str, keys[0]["keys"]))
+    return sorted(list(filter(lambda k: k, keys)))

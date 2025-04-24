@@ -77,13 +77,17 @@ def login(user_details: AuthModel, request: Request, response: Response):
         "refresh_token": refresh_token,
     }
 
-
-@router.get("/token", tags=["Auth"])
-def login(credentials: HTTPAuthorizationCredentials = Security(security)):
-    token = credentials.credentials
-    try:
-        user_key = auth_handler.decode_token(token)
-        user_ = AppDB().get_collection(AppDB.NetFlowAPI.Users).find_one({"key": user_key})
-        return {"username": user_key, "role": user_["role"], "valid": True}
-    except:
-        return {"valid": False}
+if not env.DEV:
+    @router.get("/token", tags=["Auth"])
+    def login(credentials: HTTPAuthorizationCredentials = Security(security)):
+        token = credentials.credentials
+        try:
+            user_key = auth_handler.decode_token(token)
+            user_ = AppDB().get_collection(AppDB.NetFlowAPI.Users).find_one({"key": user_key})
+            return {"username": user_key, "role": user_["role"], "valid": True}
+        except:
+            return {"valid": False}
+else:
+    @router.get("/token", tags=["Auth"])
+    def login():
+        return {"username": "testuser", "role": "dashboardclient.admin", "valid": True}
