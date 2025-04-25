@@ -131,6 +131,7 @@ class AppDB(DB):
         ParsedNetflow = DB.Collection("parsed_netflow")
         RawNetflow = DB.Collection("row_netflow")
         NetflowUser = DB.Collection("users")
+        Alerts = DB.Collection("alerts")
 
     class NetFlowAPI(DB.Database):
         _Database__name = "netflow_api"

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from globals_ import env
 from enums import TimeZoneEnum
-from core import netflow, netflow_user
+from core import netflow, netflow_user, netflow_alerts
 from models import SortOrder
 from utils import json_serializer, timezone_updater
 
@@ -44,7 +44,7 @@ def root():
 @router.post(
     "/v1/get/netflows",
     tags=["NETFLOW"],
-    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))]
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
 )
 async def _netflows(
     page: int,
@@ -81,7 +81,7 @@ async def _netflows(
 @router.post(
     "/v1/get/netflow_users",
     tags=["NETFLOW"],
-    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))]
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
 )
 async def _netflow_users(
     page: int,
@@ -97,6 +97,39 @@ async def _netflow_users(
     return json_serializer(
         timezone_updater(
             await netflow_user.get_netflow_user(
+                skip=(page - 1) * limit,
+                limit=limit,
+                filters=filters,
+                search_key=search_key,
+                date_from=date_from,
+                date_to=date_to,
+                sort_by=sort_by,
+                sort_order=sort_order,
+            ),
+            tz=timezone(tz.value),
+        )
+    )
+
+
+@router.post(
+    "/v1/get/netflow_alerts",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _netflow_alerts(
+    page: int,
+    limit: int,
+    filters: Dict[netflow_alerts.AlertFieldLiteral, list] = {},  # type: ignore
+    search_key: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    sort_by: Optional[netflow_alerts.AlertFieldLiteral] = None,  # type: ignore
+    sort_order: SortOrder = "asc",
+    tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
+):
+    return json_serializer(
+        timezone_updater(
+            await netflow_alerts.get_alerts(
                 skip=(page - 1) * limit,
                 limit=limit,
                 filters=filters,
@@ -154,6 +187,7 @@ async def _srcport_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: 
         timezone_updater(await netflow.get_dstports_keys(), tz=timezone(tz.value))
     )
 
+
 @router.get(
     "/v1/get/src_country/keys",
     tags=["NETFLOW"],
@@ -164,6 +198,7 @@ async def _country_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: 
         timezone_updater(await netflow.get_srccountries_keys(), tz=timezone(tz.value))
     )
 
+
 @router.get(
     "/v1/get/dst_country/keys",
     tags=["NETFLOW"],
@@ -173,6 +208,7 @@ async def _country_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: 
     return json_serializer(
         timezone_updater(await netflow.get_dstcountries_keys(), tz=timezone(tz.value))
     )
+
 
 @router.get(
     "/v1/get/user_country/keys",

@@ -1,5 +1,5 @@
 from pytz import timezone
-from typing import Optional, Literal, Union
+from typing import Optional, Literal, List, Union
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -74,6 +74,30 @@ class UserNetflow(BaseModel):
     schema_version: int = Field(default=1)
     country_code: Optional[str] = None
 
+class NetflowAlert(BaseModel):
+    class Malicious(BaseModel):
+        source: str
+        type_: Optional[Union[str, None]] = None
+        date: Optional[datetime] = None
+
+    src_ip: str
+    src_ip_version: str
+    src_port: str
+    src_asn: str
+    src_country_code: Optional[str] = None
+    src_malicious_meta: List[Malicious]
+    dst_ip: str
+    dst_ip_version: str
+    dst_port: str
+    dst_asn: str
+    dst_country_code: Optional[str] = None
+    dst_malicious_meta: List[Malicious]
+    connection_counts: int
+    total_flow_duration: int
+    first_seen: datetime
+    last_seen: datetime
+    mitigation_message: Optional[str] = ""
+    alerts: Optional[dict] = None
 
 # =================================
 
@@ -139,3 +163,29 @@ class User(BaseModel):
     excluded: Optional[ExcludedInfo] = None
 
 # ====================================================
+
+
+class MaliciousMeta(BaseModel):
+    source: str
+    type_: Optional[Union[str, None]] = None
+    date: Optional[datetime] = None
+
+
+class Endpoint(BaseModel):
+    ip: str
+    ip_version: str
+    port: str
+    asn: str
+    location: Optional[dict]
+    malicious_meta: List[MaliciousMeta]
+
+
+class Alert(BaseModel):
+    source: Endpoint
+    destination: Endpoint
+    connection_counts: int
+    total_flow_duration: int
+    first_seen: datetime
+    last_seen: datetime
+    mitigation_message: Optional[str] = ""
+    alerts: Optional[dict] = None
