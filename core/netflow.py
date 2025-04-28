@@ -30,6 +30,12 @@ _FIELDS = {
     "src_malicious": "source_ip.malicious",
     "src_malicious_source": "source_ip.malicious_source",
     "src_country_code": "source_ip.location.iso_code",
+    "dst_addr": "destination_ip.addr",
+    "dst_port": "destination_ip.port",
+    "dst_known": "destination_ip.known",
+    "dst_malicious": "destination_ip.malicious",
+    "dst_malicious_source": "destination_ip.malicious_source",
+    "dst_country_code": "destination_ip.location.iso_code",
 }
 
 
