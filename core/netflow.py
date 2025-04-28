@@ -55,8 +55,8 @@ async def get_netflow(
     sort_by: Optional[NetflowFieldLiteral] = None,
     sort_order: SortOrder = "asc",
 ):
-    pipeline = [*NETFLOW_PIPELINE()]
-    # pipeline = []
+    # pipeline = [*NETFLOW_PIPELINE()]
+    pipeline = []
 
     ##filters
     if filters:
