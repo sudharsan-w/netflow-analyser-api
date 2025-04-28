@@ -124,3 +124,24 @@ async def get_country_keys():
         return []
     keys = list(map(str, keys[0]["keys"]))
     return sorted(list(filter(lambda k: k, keys)))
+
+async def get_asn_keys():
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.NetflowUser, async_=True)
+        .aggregate(
+            [
+                {
+                    "$group": {
+                        "_id": "",
+                        "keys": {"$addToSet": "$asn"},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    if len(keys) == 0:
+        return []
+    keys = list(map(str, keys[0]["keys"]))
+    return sorted(list(filter(lambda k: k, keys)))

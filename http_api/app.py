@@ -221,5 +221,37 @@ async def _country_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: 
     )
 
 
+@router.get(
+    "/v1/get/dst_asn/keys",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _srcasn_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: ignore
+    return json_serializer(
+        timezone_updater(await netflow.get_srcasn_keys(), tz=timezone(tz.value))
+    )
+
+
+@router.get(
+    "/v1/get/src_asn/keys",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _dstasn_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: ignore
+    return json_serializer(
+        timezone_updater(await netflow.get_dstasn_keys(), tz=timezone(tz.value))
+    )
+
+@router.get(
+    "/v1/get/user_asn/keys",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _userasn_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: ignore
+    return json_serializer(
+        timezone_updater(await netflow_user.get_asn_keys(), tz=timezone(tz.value))
+    )
+
+
 http_api.include_router(auth_router)
 http_api.include_router(router)

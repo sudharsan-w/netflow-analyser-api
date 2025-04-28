@@ -26,7 +26,7 @@ class NetflowRecord(BaseModel):
     flow_size: int
     in_byte: int
     in_packet: int
-    protocol: int
+    protocol: str
     tcp_flag: str
     ip_version: str
     rr_id: str
@@ -124,7 +124,7 @@ class ParsedNetflow(BaseModel):
     last_datetime: datetime
     flow_duration: int
     collected_recv_datetime: datetime
-    record_num: int
+    record_num: Optional[int]
     flow_size: int
     in_byte: int
     in_packet: int
