@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 import uuid
 
 SortOrder = Literal["asc", "desc"]
+TimeGranularity = Literal["day", "hour", "minute"]
 
 
 class NetflowRecord(BaseModel):
@@ -63,14 +64,14 @@ class UserNetflow(BaseModel):
     date_updated: Optional[datetime] = None
     src_connection_count: int
     dst_connection_count: int
-    malicous_ccount: Optional[int] = (
+    malicious_count: Optional[int] = (
         None  # malicious connection counts based on dst or src
     )
     ip: str
     ip_version: str
     asn: Optional[str] = None
     geo_location: Optional[dict] = None
-    malicous_crefs: Optional[list] = None  # flow refs
+    malicious_crefs: Optional[list] = None  # flow refs
     schema_version: int = Field(default=1)
     country_code: Optional[str] = None
 

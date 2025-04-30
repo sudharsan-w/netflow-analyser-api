@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from globals_ import env
 from enums import TimeZoneEnum
 from core import netflow, netflow_user, netflow_alerts
-from models import SortOrder
+from models import SortOrder, TimeGranularity
 from utils import json_serializer, timezone_updater
 
 from .routes.auth import router as auth_router, role_based_jwt
@@ -62,16 +62,19 @@ async def _netflows(
     return json_serializer(
         timezone_updater(
             await netflow.get_netflow(
+                filters_=netflow.get_filters(
+                    filters=filters,
+                    search_key=search_key,
+                    flow_duration_lb=flow_duration_lb,
+                    flow_duration_ub=flow_duration_ub,
+                    date_from=date_from,
+                    date_to=date_to,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                    tz=tz,
+                ),
                 skip=(page - 1) * limit,
                 limit=limit,
-                filters=filters,
-                search_key=search_key,
-                flow_duration_lb=flow_duration_lb,
-                flow_duration_ub=flow_duration_ub,
-                date_from=date_from,
-                date_to=date_to,
-                sort_by=sort_by,
-                sort_order=sort_order,
             ),
             tz=timezone(tz.value),
         )
@@ -138,6 +141,81 @@ async def _netflow_alerts(
                 date_to=date_to,
                 sort_by=sort_by,
                 sort_order=sort_order,
+            ),
+            tz=timezone(tz.value),
+        )
+    )
+
+
+@router.post(
+    "/v1/get/proto_dist",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _proto_dist(
+    filters: Dict[netflow.NetflowFieldLiteral, list] = {},  # type: ignore
+    search_key: Optional[str] = None,
+    flow_duration_lb: Optional[float] = None,
+    flow_duration_ub: Optional[float] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    sort_by: Optional[netflow.NetflowFieldLiteral] = None,  # type: ignore
+    sort_order: SortOrder = "asc",
+    tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
+):  # type: ignore
+    return json_serializer(
+        timezone_updater(
+            await netflow.get_protocol_dist(
+                filters=netflow.get_filters(
+                    filters=filters,
+                    search_key=search_key,
+                    flow_duration_lb=flow_duration_lb,
+                    flow_duration_ub=flow_duration_ub,
+                    date_from=date_from,
+                    date_to=date_to,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                    tz=tz,
+                )
+            ),
+            tz=timezone(tz.value),
+        )
+    )
+
+
+@router.post(
+    "/v1/get/netflow_dist",
+    tags=["NETFLOW"],
+    dependencies=[Depends(role_based_jwt("dashboard_client.admin"))],
+)
+async def _proto_dist(
+    filters: Dict[netflow.NetflowFieldLiteral, list] = {},  # type: ignore
+    search_key: Optional[str] = None,
+    flow_duration_lb: Optional[float] = None,
+    flow_duration_ub: Optional[float] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    sort_by: Optional[netflow.NetflowFieldLiteral] = None,  # type: ignore
+    sort_order: SortOrder = "asc",
+    tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
+    granularity: TimeGranularity = None,
+):  # type: ignore
+    return json_serializer(
+        timezone_updater(
+            await netflow.get_flow_dist(
+                filters=netflow.get_filters(
+                    filters=filters,
+                    search_key=search_key,
+                    flow_duration_lb=flow_duration_lb,
+                    flow_duration_ub=flow_duration_ub,
+                    date_from=date_from,
+                    date_to=date_to,
+                    sort_by=sort_by,
+                    sort_order=sort_order,
+                    tz=tz,
+                ),
+                granularity=granularity,
+                tz=tz,
             ),
             tz=timezone(tz.value),
         )
@@ -241,6 +319,7 @@ async def _dstasn_keys(tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA):  # type: i
     return json_serializer(
         timezone_updater(await netflow.get_dstasn_keys(), tz=timezone(tz.value))
     )
+
 
 @router.get(
     "/v1/get/user_asn/keys",

@@ -147,3 +147,12 @@ def if_null(*args):
     for arg in args:
         if not arg:
             return arg
+
+def mongo_date_format(granularity):
+    if granularity == "day":
+        return "%Y-%m-%d"
+    if granularity == "hour":
+        return "%Y-%m-%dT%H"
+    if granularity == "minute":
+        return "%Y-%m-%dT%H:%M"
+    return "%Y-%m-%dT%H:%M:%S"

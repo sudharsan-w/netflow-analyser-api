@@ -1,9 +1,11 @@
+from pytz import timezone
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Literal
+from typing import Optional, Dict, List, Literal
 from database import AppDB
-from models import NetflowRecord, ParsedNetflow, SortOrder
+from enums import TimeZoneEnum
+from models import NetflowRecord, ParsedNetflow, SortOrder, TimeGranularity
 
-from utils import iterate_async, proto
+from utils import iterate_async, mongo_date_format, proto
 
 NetflowFields = tuple(NetflowRecord.model_fields.keys())
 NetflowFieldLiteral = Literal[NetflowFields]
@@ -49,7 +51,8 @@ def _rev_projection():
     return {_field_name(k): f"${k}" for k in _FIELDS}
 
 
-async def get_netflow(
+def get_filters(
+    tz: TimeZoneEnum,
     skip: Optional[int] = None,
     limit: Optional[int] = None,
     filters: Dict[NetflowFieldLiteral, list] = {},
@@ -98,20 +101,6 @@ async def get_netflow(
 
     ##flow duration
     if flow_duration_ub or flow_duration_lb:
-        # pipeline.insert(
-        #     0,
-        #     {
-        #         "$set": {
-        #             "flow_duration": {
-        #                 "$dateDiff": {
-        #                     "startDate": _field_name("first_datetime", True),
-        #                     "endDate": _field_name("last_datetime", True),
-        #                     "unit": "millisecond",
-        #                 }
-        #             }
-        #         }
-        #     },
-        # )
         if flow_duration_lb and flow_duration_ub:
             pipeline.append(
                 {
@@ -144,6 +133,8 @@ async def get_netflow(
             None if not date_to else date_to + timedelta(days=1) - timedelta(minutes=1)
         )
         date_from = None if not date_from else date_from
+        date_from = timezone(tz.value).localize(date_from) if date_from else None
+        date_to = timezone(tz.value).localize(date_to) if date_to else None
         if date_from and date_to:
             pipeline.insert(
                 0,
@@ -170,12 +161,18 @@ async def get_netflow(
             {"$sort": {_field_name(sort_by): -1 if sort_order == "desc" else 1}}
         )
 
+    return pipeline
+
+
+async def get_netflow(
+    skip: Optional[int] = None, limit: Optional[int] = None, filters_: List = []
+):
+    pipeline = filters_
+    # pipeline.append({"$set": _rev_projection()})
     if skip:
         pipeline.append({"$skip": skip})
     if limit:
         pipeline.append({"$limit": limit * 10.5})
-
-    # pipeline.append({"$set": _rev_projection()})
 
     data = (
         AppDB()
@@ -253,11 +250,13 @@ async def get_netflow(
     return res
 
 
-async def get_proro_keys():
+async def get_proro_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
-        .aggregate([{"$group": {"_id": "", "keys": {"$addToSet": "$protocol"}}}])
+        .aggregate(
+            [*filters, {"$group": {"_id": "", "keys": {"$addToSet": "$protocol"}}}]
+        )
     )
     keys = await iterate_async(keys)
     if len(keys) == 0:
@@ -271,12 +270,13 @@ async def get_proro_keys():
     return sorted(keys)
 
 
-async def get_srcports_keys():
+async def get_srcports_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 # {"$group": {"_id": "", "keys": {"$addToSet": "$src_port"}}},
                 {"$group": {"_id": "", "keys": {"$addToSet": "$source_ip.port"}}},
             ]
@@ -289,12 +289,13 @@ async def get_srcports_keys():
     return sorted(list(filter(lambda k: len(k) <= 5, keys)))
 
 
-async def get_dstports_keys():
+async def get_dstports_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 {"$group": {"_id": "", "keys": {"$addToSet": "$destination_ip.port"}}},
             ]
         )
@@ -306,12 +307,13 @@ async def get_dstports_keys():
     return sorted(list(filter(lambda k: len(k) <= 5, keys)))
 
 
-async def get_srccountries_keys():
+async def get_srccountries_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 {
                     "$group": {
                         "_id": "",
@@ -328,12 +330,13 @@ async def get_srccountries_keys():
     return sorted(list(filter(lambda k: k, keys)))
 
 
-async def get_dstcountries_keys():
+async def get_dstcountries_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 {
                     "$group": {
                         "_id": "",
@@ -349,12 +352,14 @@ async def get_dstcountries_keys():
     keys = list(map(str, keys[0]["keys"]))
     return sorted(list(filter(lambda k: k, keys)))
 
-async def get_srcasn_keys():
+
+async def get_srcasn_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 {
                     "$group": {
                         "_id": "",
@@ -370,12 +375,14 @@ async def get_srcasn_keys():
     keys = list(map(str, keys[0]["keys"]))
     return sorted(list(filter(lambda k: k, keys)))
 
-async def get_dstasn_keys():
+
+async def get_dstasn_keys(filters: List = []):
     keys = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
         .aggregate(
             [
+                *filters,
                 {
                     "$group": {
                         "_id": "",
@@ -390,3 +397,99 @@ async def get_dstasn_keys():
         return []
     keys = list(map(str, keys[0]["keys"]))
     return sorted(list(filter(lambda k: k, keys)))
+
+
+async def get_protocol_dist(filters: List = []):
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(
+            [
+                *filters,
+                {
+                    "$group": {
+                        "_id": _field_name("protocol", True),
+                        "count": {"$sum": 1},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    total_count = 0
+    for doc in keys:
+        doc["proto"] = (
+            proto.l4_proto(doc["_id"])
+            if proto.l4_proto(doc["_id"])
+            else str(doc["_id"])
+        )
+        total_count += doc["count"]
+        del doc["_id"]
+    keys = sorted(keys, key=lambda a: a["count"], reverse=True)
+    return {"total": total_count, "dist": keys}
+
+
+async def get_protocol_dist(filters: List = []):
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(
+            [
+                *filters,
+                {
+                    "$group": {
+                        "_id": _field_name("protocol", True),
+                        "count": {"$sum": 1},
+                    }
+                },
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    total_count = 0
+    for doc in keys:
+        doc["proto"] = (
+            proto.l4_proto(doc["_id"])
+            if proto.l4_proto(doc["_id"])
+            else str(doc["_id"])
+        )
+        total_count += doc["count"]
+        del doc["_id"]
+    keys = sorted(keys, key=lambda a: a["count"], reverse=True)
+    return {"total": total_count, "dist": keys}
+
+
+async def get_flow_dist(
+    filters: List = [],
+    granularity: TimeGranularity = "day",
+    tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
+):
+    keys = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(
+            [
+                *filters,
+                {
+                    "$set": {
+                        "date_": {
+                            "$dateToString": {
+                                "date": _field_name("first_datetime", True),
+                                "format": mongo_date_format(granularity),
+                                "timezone": tz.value,
+                            }
+                        }
+                    }
+                },
+                {"$group": {"_id": "$date_", "count": {"$sum": 1}}},
+            ]
+        )
+    )
+    keys = await iterate_async(keys)
+    total_count = 0
+    for doc in keys:
+        doc["bucket"] = doc["_id"]
+        total_count += doc["count"]
+        del doc["_id"]
+    keys = sorted(keys, key=lambda a: a["bucket"])
+    return {"total": total_count, "dist": keys}
