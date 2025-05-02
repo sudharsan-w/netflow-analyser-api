@@ -69,9 +69,11 @@ async def _netflows(
                     flow_duration_ub=flow_duration_ub,
                     date_from=date_from,
                     date_to=date_to,
+                    tz=tz,
+                ),
+                sort_=netflow.get_sort(
                     sort_by=sort_by,
                     sort_order=sort_order,
-                    tz=tz,
                 ),
                 skip=(page - 1) * limit,
                 limit=limit,
@@ -159,8 +161,6 @@ async def _proto_dist(
     flow_duration_ub: Optional[float] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
-    sort_by: Optional[netflow.NetflowFieldLiteral] = None,  # type: ignore
-    sort_order: SortOrder = "asc",
     tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
 ):  # type: ignore
     return json_serializer(
@@ -173,8 +173,6 @@ async def _proto_dist(
                     flow_duration_ub=flow_duration_ub,
                     date_from=date_from,
                     date_to=date_to,
-                    sort_by=sort_by,
-                    sort_order=sort_order,
                     tz=tz,
                 )
             ),
@@ -195,8 +193,6 @@ async def _proto_dist(
     flow_duration_ub: Optional[float] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
-    sort_by: Optional[netflow.NetflowFieldLiteral] = None,  # type: ignore
-    sort_order: SortOrder = "asc",
     tz: TimeZoneEnum = TimeZoneEnum.ASIA_KOLKATA,  # type: ignore
     granularity: TimeGranularity = None,
 ):  # type: ignore
@@ -210,8 +206,6 @@ async def _proto_dist(
                     flow_duration_ub=flow_duration_ub,
                     date_from=date_from,
                     date_to=date_to,
-                    sort_by=sort_by,
-                    sort_order=sort_order,
                     tz=tz,
                 ),
                 granularity=granularity,

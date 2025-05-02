@@ -1,4 +1,5 @@
 L4_PROTOCOL_MAP = {
+    0: "HOPOPT",
     1: "ICMP",
     2: "IGMP",
     6: "TCP",

@@ -152,7 +152,7 @@ class User(BaseModel):
     date_updated: Optional[datetime] = None
     src_connection_count: int
     dst_connection_count: int
-    malicous_count: Optional[int] = (
+    malicious_count: Optional[int] = (
         None  # malicious connection counts based on dst or src
     )
     ip: str

@@ -1,3 +1,4 @@
+import asyncio
 from pytz import timezone
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Literal
@@ -61,8 +62,6 @@ def get_filters(
     flow_duration_ub: Optional[float] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
-    sort_by: Optional[NetflowFieldLiteral] = None,
-    sort_order: SortOrder = "asc",
 ):
     # pipeline = [*NETFLOW_PIPELINE()]
     pipeline = []
@@ -156,32 +155,48 @@ def get_filters(
                 0, {"$match": {_field_name("first_datetime"): {"$lte": date_to}}}
             )
 
+    return pipeline
+
+
+def get_sort(
+    sort_by: Optional[NetflowFieldLiteral] = None,
+    sort_order: SortOrder = "asc",
+):
+    pipeline = []
     if sort_by:
         pipeline.append(
             {"$sort": {_field_name(sort_by): -1 if sort_order == "desc" else 1}}
         )
-
     return pipeline
 
 
 async def get_netflow(
-    skip: Optional[int] = None, limit: Optional[int] = None, filters_: List = []
+    skip: Optional[int] = None,
+    limit: Optional[int] = None,
+    filters_: List = [],
+    sort_: List = [],
 ):
     pipeline = filters_
-    # pipeline.append({"$set": _rev_projection()})
+    pagination = sort_
     if skip:
-        pipeline.append({"$skip": skip})
+        pagination.append({"$skip": skip})
     if limit:
-        pipeline.append({"$limit": limit * 10.5})
+        pagination.append({"$limit": limit * 10.5})
 
     data = (
         AppDB()
         .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
-        .aggregate(pipeline)
+        .aggregate(pipeline + pagination)
     )
-    data = await iterate_async(data)
+    agg = (
+        AppDB()
+        .get_collection(AppDB.NetFlows.ParsedNetflow, async_=True)
+        .aggregate(pipeline + [{"$count": "total"}])
+    )
+    data, agg = await asyncio.gather(iterate_async(data), iterate_async(agg))
 
-    if len(data) > 0:
+    if len(data) > 0 and len(agg) > 0:
+        total_results = agg[0]["total"]
         curr_page = int(skip / limit) + 1
         if len(data) > limit:
             pages_till = int((len(data) - limit) / limit) + curr_page
@@ -192,6 +207,7 @@ async def get_netflow(
             has_next_pages = False
             has_prev_pages = skip > 0
     else:
+        total_results = 0
         curr_page = int(skip / limit)
         pages_till = 0
         has_next_pages = False
@@ -242,6 +258,7 @@ async def get_netflow(
         "page_no": curr_page,
         "skip": skip,
         "limit": limit,
+        "total_results": total_results,
         "pages_till": pages_till,
         "has_next_pages": has_next_pages,
         "has_prev_pages": has_prev_pages,
